@@ -1,4 +1,6 @@
-def fuzzy_delete(genome_list):
+import random
+
+def fuzzy_delete(genome_list, speciesStrength):
     # Takes a list of genomes. Removes most of the least fit members.
     # Retains most of the most fit members. Returns a list of genome
     # that is exactly half the length of the inputed list.
@@ -6,7 +8,7 @@ def fuzzy_delete(genome_list):
     culledGenomes = []
     sortedGenomes = list(reversed(sorted(genomeWeights)))
     cumulativeWeight = sum(genomeWeights)
-    for i in range(len(genomeWeights)//2):
+    for i in range(int(len(genomeWeights)*speciesStrength)):
         randomNumber = random.uniform(0,cumulativeWeight)
         counter = 0
         while True:
