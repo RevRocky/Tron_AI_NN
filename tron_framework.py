@@ -27,9 +27,6 @@ def sign(n):
     if n < 0: return -1
     return 0
 
-def getBoard():
-    return board
-
 while running:
     pygame.init()
 
@@ -72,6 +69,8 @@ while running:
                     d1 = -1, 0
                 elif event.key==pygame.K_d:
                     d1 = 1, 0
+
+        neatNN.evaluate(board, neuralNetworkPosition)
 
         aim = x, y = sub(add(add(opponentPosition, d1), d1), neuralNetworkPosition)
         if abs(x) > abs(y):
