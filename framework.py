@@ -1,4 +1,4 @@
-import pygame
+import pygame, random
 
 size = width, height = 160, 160 #must be multiple of four due to how the randomized spawning works
 black = 0,0,0
