@@ -1,4 +1,6 @@
 import pygame, random
+from NEAT_TRON import neatNN
+import numpy as np
 
 size = width, height = 160, 160 #must be multiple of four due to how the randomized spawning works
 black = 0,0,0
@@ -8,6 +10,10 @@ htot = 0
 atot = 0
 ttot = 0
 running = True
+human_play = True
+board = np.array(0)
+board.resize(size)
+board.fill(2)
 
 def add(a, b):
     return (a[0]+b[0], a[1]+b[1])
@@ -24,6 +30,9 @@ def sign(n):
     if n < 0: return -1
     return 0
 
+def getBoard():
+    return board
+
 while running:
     pygame.init()
 
@@ -35,16 +44,18 @@ while running:
     clock = pygame.time.Clock()
 
     d1 = 1,0
-    pos1 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
-    pos2 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
-
-    mindiff = 15
-    while abs(pos1[0] - pos2[0]) < mindiff or abs(pos1[1] - pos2[1]) < mindiff:
-        pos1 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
-        pos2 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
 
     p1Points = []
-    p2Points = [] #added
+    p2Points = []
+
+    mindiff = 15
+    while True:
+        pos1 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+        pos2 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+        if not(abs(pos1[0] - pos2[0]) < mindiff or abs(pos1[1] - pos2[1]) < mindiff):
+            board[pos1[0]][pos1[1]] = 1
+            board[pos2[0]][pos2[1]] = 0
+            break
 
     ai_lose = False
     human_lose = False
@@ -81,15 +92,16 @@ while running:
         elif (not oob(add(pos2, (optimal[0] * -1, optimal[1] * -1)), width, height)) and screen.get_at(add(pos2, (optimal[0] * -1, optimal[1] * -1))) == black:
             d2 = optimal[0] * -1, optimal[1] * -1
 
+        board[pos1[0]][pos1[1]] = -1
         pos1 = add(pos1, d1)
         pos2 = add(pos2, d2)
+        board[pos1[0]][pos1[1]] = 1
+        board[pos2[0]][pos2[1]] = 0
 
         p1Points.append(pos1)
         p2Points.append(pos2)
 
-        #removed
-
-        if pos1 == pos2: #added
+        if pos1 == pos2:
             ai_lose = True
             human_lose = True
             ttot += 1
@@ -112,6 +124,7 @@ while running:
                 if len(p2Points) > 1:
                     screen.set_at(p2Points[-2], (255, 0, 0))
 
+        neatNN.increaseFitness(1)
         clock.tick(25)
 
         pygame.transform.scale(screen, (width * 4, height * 4), display)
@@ -120,19 +133,24 @@ while running:
 
     pygame.quit()
 
-    #removed
-
-    if ai_lose and human_lose: #added
+    if ai_lose and human_lose:
         print('Tie')
-    elif ai_lose: print('AI Wins!')
-    elif human_lose: print('You Win')
+        neatNN.nextGenome()
+    elif ai_lose:
+        print('AI Wins!')
+        neatNN.increaseFitness(400)
+        neatNN.nextGenome()
+    elif human_lose:
+        print('You Win')
+        neatNN.nextGenome()
 
-    res = 'FILLER' #added
+    res = ''
     while res not in ['y', 'n', 'Y', 'N', '']:
-        if human_lose: res = str(raw_input("Rematch? Please? [Y, n]"))
-        else: res = str(raw_input("Would you like a rematch? [Y, n]"))
-        print type(res)
+        if human_lose:
+            res = str(input("Rematch? Please? [Y, n]"))
+        else:
+            res = str(input("Would you like a rematch? [Y, n]"))
+    if res in ['n', 'N']:
+        running = False
 
-    if res in ['n', 'N']: running = False
-
-print 'You won', htot, 'times, the AI won', atot, 'times, and you tied', ttot, 'times. Good Game.' #added
+print ('You won', htot, 'times, the AI won', atot, 'times, and you tied', ttot, 'times. Good Game.')
