@@ -1,6 +1,6 @@
 import random
 
-def fuzzy_delete(genome_list, speciesStrength):
+def cull(genome_list, speciesStrength):
     # Takes a list of genomes. Removes most of the least fit members.
     # Retains most of the most fit members. Returns a list of genome
     # that is exactly half the length of the inputed list.
