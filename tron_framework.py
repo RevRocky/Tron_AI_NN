@@ -3,14 +3,11 @@ from NEAT_TRON import neatNN
 import numpy as np
 
 size = width, height = 160, 160 #must be multiple of four due to how the randomized spawning works
-black = 0,0,0
-dark_blue = 0,0,255
-light_blue = 0,255,255
-htot = 0
-atot = 0
-ttot = 0
+opponentWinCount = 0
+neuralNetworkWinCount = 0
+tieCount = 0
 running = True
-human_play = True
+humanPlayer = True
 board = np.array(0)
 board.resize(size)
 board.fill(2)
@@ -48,17 +45,17 @@ while running:
     p1Points = []
     p2Points = []
 
-    mindiff = 15
+    minimumDifference = 15
     while True:
-        pos1 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
-        pos2 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
-        if not(abs(pos1[0] - pos2[0]) < mindiff or abs(pos1[1] - pos2[1]) < mindiff):
-            board[pos1[0]][pos1[1]] = 1
-            board[pos2[0]][pos2[1]] = 0
+        opponentPosition = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+        neuralNetworkPosition = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+        if not(abs(opponentPosition[0] - neuralNetworkPosition[0]) < minimumDifference or abs(opponentPosition[1] - neuralNetworkPosition[1]) < minimumDifference):
+            board[opponentPosition[0]][opponentPosition[1]] = 1
+            board[neuralNetworkPosition[0]][neuralNetworkPosition[1]] = 0
             break
 
-    ai_lose = False
-    human_lose = False
+    neuralNetworkLost = False
+    opponentLost = False
 
     playing = True
     while playing:
@@ -76,55 +73,54 @@ while running:
                 elif event.key==pygame.K_d:
                     d1 = 1, 0
 
-        aim = x, y = sub(add(add(pos1, d1), d1), pos2)
+        aim = x, y = sub(add(add(opponentPosition, d1), d1), neuralNetworkPosition)
         if abs(x) > abs(y):
             optimal = sign(x), 0
             optimal2 = 0, sign(y)
         else:
             optimal = 0, sign(y)
             optimal2 = sign(x), 0
-        if (not oob(add(pos2, optimal), width, height)) and screen.get_at(add(pos2, optimal)) == black:
+        if (not oob(add(neuralNetworkPosition, optimal), width, height)) and screen.get_at(add(neuralNetworkPosition, optimal)) == black:
            d2 = optimal
-        elif (not oob(add(pos2, optimal2), width, height)) and screen.get_at(add(pos2, optimal2)) == black:
+        elif (not oob(add(neuralNetworkPosition, optimal2), width, height)) and screen.get_at(add(neuralNetworkPosition, optimal2)) == black:
             d2 = optimal2
-        elif (not oob(add(pos2, (optimal2[0] * -1, optimal2[1] * -1)), width, height)) and screen.get_at(add(pos2, (optimal2[0] * -1, optimal2[1] * -1))) == black:
+        elif (not oob(add(neuralNetworkPosition, (optimal2[0] * -1, optimal2[1] * -1)), width, height)) and screen.get_at(add(neuralNetworkPosition, (optimal2[0] * -1, optimal2[1] * -1))) == black:
             d2 = optimal2[0] * -1, optimal2[1] * -1
-        elif (not oob(add(pos2, (optimal[0] * -1, optimal[1] * -1)), width, height)) and screen.get_at(add(pos2, (optimal[0] * -1, optimal[1] * -1))) == black:
+        elif (not oob(add(neuralNetworkPosition, (optimal[0] * -1, optimal[1] * -1)), width, height)) and screen.get_at(add(neuralNetworkPosition, (optimal[0] * -1, optimal[1] * -1))) == black:
             d2 = optimal[0] * -1, optimal[1] * -1
 
-        board[pos1[0]][pos1[1]] = -1
-        pos1 = add(pos1, d1)
-        pos2 = add(pos2, d2)
-        board[pos1[0]][pos1[1]] = 1
-        board[pos2[0]][pos2[1]] = 0
+        board[opponentPosition[0]][opponentPosition[1]] = -1
+        opponentPosition = add(opponentPosition, d1)
+        neuralNetworkPosition = add(neuralNetworkPosition, d2)
+        board[opponentPosition[0]][opponentPosition[1]] = 1
+        board[neuralNetworkPosition[0]][neuralNetworkPosition[1]] = 0
 
-        p1Points.append(pos1)
-        p2Points.append(pos2)
+        p1Points.append(opponentPosition)
+        p2Points.append(neuralNetworkPosition)
 
-        if pos1 == pos2:
-            ai_lose = True
-            human_lose = True
-            ttot += 1
+        if opponentPosition == neuralNetworkPosition:
+            neuralNetworkLost = True
+            opponentLost = True
+            tieCount += 1
             playing = False
         else:
-            if oob(pos1, width, height) or screen.get_at(pos1) != black:
-                ai_lose = True
-                atot += 1
+            if oob(opponentPosition, width, height) or screen.get_at(opponentPosition) != black:
+                neuralNetworkLost = True
+                neuralNetworkWinCount += 1
                 playing = False
             else:
-                screen.set_at(pos1, (0, 255, 255))
+                screen.set_at(opponentPosition, (0, 255, 255))
                 if len(p1Points) > 1:
                     screen.set_at(p1Points[-2], (0, 0, 255))
-            if oob(pos2, width, height) or screen.get_at(pos2) != black:
-                human_lose = True
-                htot += 1
+            if oob(neuralNetworkPosition, width, height) or screen.get_at(neuralNetworkPosition) != black:
+                opponentLost = True
+                opponentWinCount += 1
                 playing = False
             else:
-                screen.set_at(pos2, (255, 255, 0))
+                screen.set_at(neuralNetworkPosition, (255, 255, 0))
                 if len(p2Points) > 1:
                     screen.set_at(p2Points[-2], (255, 0, 0))
 
-        neatNN.increaseFitness(1)
         clock.tick(25)
 
         pygame.transform.scale(screen, (width * 4, height * 4), display)
@@ -133,24 +129,23 @@ while running:
 
     pygame.quit()
 
-    if ai_lose and human_lose:
+    if neuralNetworkLost and opponentLost:
         print('Tie')
-        neatNN.nextGenome()
-    elif ai_lose:
+        neatNN.nextGenome(False)
+    elif neuralNetworkLost:
         print('AI Wins!')
-        neatNN.increaseFitness(400)
-        neatNN.nextGenome()
-    elif human_lose:
+        neatNN.nextGenome(True)
+    elif opponentLost:
         print('You Win')
-        neatNN.nextGenome()
+        neatNN.nextGenome(False)
 
-    res = ''
-    while res not in ['y', 'n', 'Y', 'N', '']:
-        if human_lose:
-            res = str(input("Rematch? Please? [Y, n]"))
+    response = ''
+    while response not in ['y', 'n', 'Y', 'N', '']:
+        if opponentLost:
+            response = str(input("Rematch? Please? [Y, n]"))
         else:
-            res = str(input("Would you like a rematch? [Y, n]"))
-    if res in ['n', 'N']:
+            response = str(input("Would you like a rematch? [Y, n]"))
+    if response in ['n', 'N']:
         running = False
 
-print ('You won', htot, 'times, the AI won', atot, 'times, and you tied', ttot, 'times. Good Game.')
+print ('You won', opponentWinCount, 'times, the AI won', neuralNetworkWinCount, 'times, and you tied', tieCount, 'times. Good Game.')
