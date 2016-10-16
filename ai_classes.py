@@ -1,16 +1,12 @@
-
-# coding: utf-8
-
-# In[262]:
-
-from __future__ import division
 from __future__ import division
 import math
 import random
 import numpy as np
+import time
+import pygame
 
 #from cull import cull
-#from save import record, save
+from saveToFile import *
 #from fileIO import *
 
 outputs = ["U", "D", "L", "R"]   # The four legal moves in tron
@@ -22,13 +18,6 @@ MUTATE_INPUT_THRESH = 4/3  # 1/75 of random numbers between 0 and 100 ill fall i
 MUTATE_NODE_THRESH = MUTATE_INPUT_THRESH + 3  # Preserves probabilties
 MUTATE_CONN_THRESH = MUTATE_NODE_THRESH + 5
 
-
-# In[ ]:
-
-
-
-
-# In[263]:
 
 class neatNN(object):
     """ This class will aim to implement the NEAT algorithm to creating neural networks that can evolve structures capable of playing
@@ -61,22 +50,31 @@ class neatNN(object):
         self.species = self.sortToSpecies(self.unsortedNextGen) # Sorts each species into genomes. Does unsortedNextGen need to be an attribute or not
 
         arrayMaker = []
+        maxFitness = 0
+        avgFitness = 0
+        count = 0
         for species in self.species:
             specFitTot = 0
             for genome in species:
+                count += 1
                 fitness, winning = self.evaluate(genome)
                 if winning:
                     fitness += 400  # How much we increase fitness by.
                     genome.fitness = fitness
                 specFitTot +=  fitness
+                if fitness > maxFitness: 
+                    bestGenome = genome
+            avgFitness += specFitTot
             if len(species) > 0:
                 arrayMaker.append(specFitTot / len(species))
             else:
                 arrayMaker.append(0)
+        
+        avgFitness = avgFitness / count
 
         # Getting the relative fitnesses of each species!
         array = np.array(arrayMaker)
-        array = (array / np.amax(array)) / 0.4 + 0.3
+        array = (array / np.amax(array)) / 0.4 + 0.15
         for i, p in enumerate(array):
             self.unsortedNextGen += self.breedingControl(self.species[i], p)
 
@@ -88,6 +86,10 @@ class neatNN(object):
                 genome.mutateAddNode(self)
             elif num < MUTATE_CONN_THRESH:
                 genome.mutateAddConnection(self)
+        
+        pickletoDisk(self.species, "EcoSystem")  # Saves the whole eco system.
+        pickletoDisk(bestGenome, "strongestMember")
+        return maxFitness, avgFitness
 
     def sortToSpecies(self, newGenomes):
         nextGeneration = [list([]) for _ in xrange(len(self.species))] # This is where we store the results of our sorting
@@ -150,13 +152,15 @@ class neatNN(object):
             if 1 in winner:
                 gameWinner = True
         # If the first cell in our tuple is 1 the NN has won
+        tron.quit()
         if winner[1] == 1:
             nnWinner = True
         else:  # The opponent has won
             nnWinner = False
         return fitness, nnWinner
 
-    def processBoard(self, array, xy): #numpy array, NN head position
+    def processBoard(self, inp, xy): #numpy array, NN head position
+        array = np.copy(inp)
         og = np.copy(array)
         array.fill(0)
         array.resize(((2 * array.shape[0]) -1, (2 * array.shape[1]) -1), refcheck = False)
@@ -355,7 +359,7 @@ class genome(object):
 
         speciesVec is a list containing representatives from each species"""
         bestFit = 0
-        DELTA_THRESH = 1000     # To do -----------------------------------------------------------
+        DELTA_THRESH = 50     # To do -----------------------------------------------------------
         """Somewhat of """
         for species, rep in enumerate(speciesReps):
             delta = father.calculateDistance(self, rep)     # Im overdoing creating methods
@@ -498,12 +502,28 @@ class outputNode(object):
 
 class Tron(object):
     def start(self, size):
-        self.board = np.full(size, 2)
+        self.board = np.empty(size)
+        #self.board.shape(size)
+        self.board.fill(2)
         self.size = size
-        self.p1 = size[0] / 4, size[1] / 4  #p1 is the NN
-        self.p2 = size[0] - size[0] / 4, size[0] - size[0] / 4 #p2 is the human/opponent
+        self.AI = True
+        width = self.size[0]
+        height = self.size[1]
+        minimumDifference = 15
+        while True:
+            self.p2 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+            self.p1 = random.randint(width / 4, 3 * (width / 4)), random.randint(height / 4, 3 * (height / 4))
+            if not(abs(self.p2[0] - self.p1[0]) < minimumDifference or abs(self.p2[1] - self.p1[1]) < minimumDifference):
+                break
         self.d1 = (1, 0)
         self.d2 = (-1, 0)
+        pygame.init()
+        self.d = pygame.display.set_mode((self.size[0] * 4,self.size[1]*4))
+        self.s = pygame.Surface(size)
+        self.clock = pygame.time.Clock()
+    
+    def quit(self):
+        pygame.quit()
 
     def add(self, a, b):
         return (a[0]+b[0], a[1]+b[1])
@@ -520,23 +540,51 @@ class Tron(object):
         if move == "L": self.d1 = (-1, 0)
         if move == "R": self.d1 = (1, 0)
 
-        self.d2 = ai(self.board, self.p1, self.p2, self.oldd1, self.d2, self.size[0], self.size[1])
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                playing = False
+            if event.type == pygame.KEYDOWN:
+                if event.key==pygame.K_w:
+                    self.d2 = 0, -1
+                elif event.key==pygame.K_s:
+                    self.d2 = 0, 1
+                elif event.key==pygame.K_a:
+                    self.d2 = -1, 0
+                elif event.key==pygame.K_d:
+                    self.d2 = 1, 0
 
+        if self.AI:
+            self.d2 = ai(self.board, self.p1, self.p2, self.oldd1, self.d2, self.size[0], self.size[1])
+        
         oldp2 = self.p2
 
         self.p1 = add(self.p1, self.d1)
         self.p2 = add(self.p2, self.d2)
+        
+        self.p1 = int(self.p1[0]), int(self.p1[1])
+        self.p2 = int(self.p2[0]), int(self.p2[1])
 
         if self.p1 == self.p2:
             return self.p1, (0, 1)
-        elif self.oob(self.p1, self.size[0], self.size[1]) or self.board[self.p1[0]][self.p1[1]] != 2:
-            return self.p1, (0, 1)
-        elif self.oob(self.p2, self.size[0], self.size[1]) or self.board[self.p2[0]][self.p2[1]] != 2:
-            return self.p1, (1, 0)
+        else:
+            if self.oob(self.p1, self.size[0], self.size[1]) or self.board[self.p1[0]][self.p1[1]] != 2:
+                return self.p1, (0, 1)
+            else:
+                self.s.set_at(self.p1, (0, 0, 255))
+            if self.oob(self.p2, self.size[0], self.size[1]) or self.board[self.p2[0]][self.p2[1]] != 2:
+                return self.p1, (1, 0)
+            else:
+                self.s.set_at(self.p2, (255, 0, 0))
 
         self.board[self.p1[0]][self.p1[1]] = 0
         self.board[self.p2[0]][self.p2[1]] = 1
         self.board[oldp2[0]][oldp2[1]] = -1
+        
+        self.clock.tick(30)
+
+        pygame.transform.scale(self.s, (self.size[0] * 4, self.size[1] * 4), self.d)
+        pygame.display.flip()
 
         return self.p1, (0,0)
 
@@ -589,19 +637,20 @@ def ai(board, opPos, yourPos, d1, d2, width, height):
 
 def main():
     MAX_GENERATIONS = 3
+    
+    clear_file()
 
-    #
+    
     trainingNets = neatNN()
     trainingNets.start()
     for generation in xrange(MAX_GENERATIONS):
-        trainingNets.rep()
-        trainingNets.learningLoop()
-
-
-
-# In[267]:
+        startTime = time.time()
+        print "Generation", generation, "begin"
+        maxF, avgF = trainingNets.learningLoop()
+        endTime = time.time()
+        record(generation, endTime - startTime, avgF, maxF)
+    
 
 main()
 
 
-# In[ ]:
