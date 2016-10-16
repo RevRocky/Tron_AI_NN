@@ -184,13 +184,11 @@ class neatNN(object):
 
     def getBreedingPairs(self, species, percentKept):
         culledGenome = self.cull(species, percentKept)
-        print culledGenome
         random.shuffle(culledGenome)
 
         return [(culledGenome[x][1],culledGenome[(x+1)%len(culledGenome)][1])  for x in xrange(len(culledGenome))]
 
     def breedGenome(self, parent1, parent2):
-        print parent1, parent2
         """ASSUMES node1 and node2 are compatable parent nodes. This method will go through each parent and select genes weights to inherit at
         random from each of the parent. Genes not expressed in either parent will be carried forth to the child node!"""
         # Conception
@@ -596,7 +594,6 @@ def main():
     trainingNets = neatNN()
     trainingNets.start()
     for generation in xrange(MAX_GENERATIONS):
-        print "Generation", generation, "begin"
         trainingNets.rep()
         trainingNets.learningLoop()
 
