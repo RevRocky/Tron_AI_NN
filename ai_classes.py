@@ -9,7 +9,7 @@ import math
 import random
 import numpy as np
 
-from cull import cull
+#from cull import cull
 #from save import record, save
 #from fileIO import *
 
@@ -42,7 +42,7 @@ class neatNN(object):
 
     def start(self):
         size = self.size
-        self.unsortedNextGen = [genome(self, [(size[0], size[1] - 1), (size[0] - 2, size[1] - 1), (size[0] - 1, size[1]), (size[0] - 1, size[1] - 2)], outputs, 2)for _ in xrange(INITIAL_GENOMES)]
+        self.unsortedNextGen = [genome(self, [(size[0], size[1] - 1), (size[0] - 2, size[1] - 1), (size[0] - 1, size[1]), (size[0] - 1, size[1] - 2)], outputs, 2) for _ in xrange(INITIAL_GENOMES)]
 
     def learningLoop(self):
         """This method controls the main learningLoop of our neural network
@@ -67,14 +67,16 @@ class neatNN(object):
                 fitness, winning = self.evaluate(genome)
                 if winning:
                     fitness += 400  # How much we increase fitness by.
-                    genome.rewardWinning()   #   Rewards winning!
+                    genome.fitness = fitness
                 specFitTot +=  fitness
+            if len(species) > 0:
                 arrayMaker.append(specFitTot / len(species))
+            else:
+                arrayMaker.append(0)
 
         # Getting the relative fitnesses of each species!
         array = np.array(arrayMaker)
         array = (array / np.amax(array)) / 0.4 + 0.3
-
         for i, p in enumerate(array):
             self.unsortedNextGen += self.breedingControl(self.species[i], p)
 
@@ -85,7 +87,7 @@ class neatNN(object):
             elif num < MUTATE_NODE_THRESH:
                 genome.mutateAddNode(self)
             elif num < MUTATE_CONN_THRESH:
-                genome.mutateAddConnection
+                genome.mutateAddConnection(self)
 
     def sortToSpecies(self, newGenomes):
         nextGeneration = [list([]) for _ in xrange(len(self.species))] # This is where we store the results of our sorting
@@ -124,6 +126,11 @@ class neatNN(object):
         else:
             return 0
 
+    def cull(self, genome_list, speciesStrength):
+        genomeWeights = [(x.fitness,x) for x in genome_list]
+        culledGenomes = []
+        sortedGenomes = list(reversed(sorted(genomeWeights,key=lambda x: x[0])))
+        return sortedGenomes[0:int(len(sortedGenomes) * speciesStrength)]
 
     def evaluate(self, genome):
         """Plays Tron using a NN archetecture specified by the genome that is passed in.
@@ -132,27 +139,28 @@ class neatNN(object):
         boardSize = (160, 160)
         tron.start(boardSize)
         headPos = (159, 159)
-        winner = False
-        genome.fitness = 0
-        while (not winner):
+        gameWinner = False
+        fitness = 0
+        while (not gameWinner):
             processedBoard = self.processBoard(tron.board, headPos)
             genomeMove = genome.getMove(processedBoard)
-            genome.fitness += 1
+            fitness = fitness + 1
             # Assumes opponent wants an unadulterated board. This is a function that will interface with the AI the opponent is playing against
             headPos, winner = tron.tick(genomeMove)  # board is the current board sate. nextTick a tuple with first position being 1 if NN wins, second position if opponent wins
-            if winner:
+            if 1 in winner:
                 gameWinner = True
         # If the first cell in our tuple is 1 the NN has won
         if winner[1] == 1:
             nnWinner = True
         else:  # The opponent has won
             nnWinner = False
-        return genome.fitness, nnWinner
+        return fitness, nnWinner
 
     def processBoard(self, array, xy): #numpy array, NN head position
         og = np.copy(array)
         array.fill(0)
         array.resize(((2 * array.shape[0]) -1, (2 * array.shape[1]) -1), refcheck = False)
+        array = array.astype(int)
         array[0:og.shape[0],0:og.shape[1]] = og
         array = np.roll(array, (og.shape[0]-1)-xy[1], 0)
         array = np.roll(array, (og.shape[1]-1)-xy[0], 1)
@@ -175,13 +183,14 @@ class neatNN(object):
         return nextGenerationUnsorted # An unsorted list of our next
 
     def getBreedingPairs(self, species, percentKept):
-        culledGenome = cull(species, percentKept)
-        print 'cull', culledGenome
+        culledGenome = self.cull(species, percentKept)
+        print culledGenome
         random.shuffle(culledGenome)
 
-        return [(culledGenome[x],culledGenome[(x+1)%len(culledGenome)])  for x in xrange(len(culledGenome))]
+        return [(culledGenome[x][1],culledGenome[(x+1)%len(culledGenome)][1])  for x in xrange(len(culledGenome))]
 
     def breedGenome(self, parent1, parent2):
+        print parent1, parent2
         """ASSUMES node1 and node2 are compatable parent nodes. This method will go through each parent and select genes weights to inherit at
         random from each of the parent. Genes not expressed in either parent will be carried forth to the child node!"""
         # Conception
@@ -206,7 +215,6 @@ class neatNN(object):
                 inherited = choice(parent1.genes[innovation].weight, parent2.genes[innovation].weight)
                 child.addNode(inNode)
                 child.addNode(outNode)
-                print 'calling types', inNode, type(inNode)
                 child.addConnection(inNode, outNode, innovation, inherited)
 
             elif (innovation in parent1Diff) and (parent1.fitness >= parent2.fitness):
@@ -275,7 +283,7 @@ class genome(object):
         for i in xrange(initialConnections):
             inPut = self.nodes[random.randint(0, len(initialInputs) - 1)]
             outPut = self.nodes[random.randint(len(initialInputs), len(initialInputs) + len(initialOutputs) - 2)]
-            self.addConnection(inPut,outPut, parent.innovation, random.uniform(-1, 1) )
+            self.addVirginConnection(inPut,outPut, parent.innovation, random.uniform(-1, 1) )
             parent.innovation += 1
 
     def sigmoid(self, x):
@@ -289,12 +297,20 @@ class genome(object):
             self.nodes[-1].index = self.maxNodeNumber
             return node
 
+    def addVirginConnection(self, inNode, outNode, innovation, weight):
+        """Adds a new, virgin connection between two nodes."""
+        self.genes[innovation] = gene(inNode, outNode, innovation, weight) # This should be sufficient to add a connection
+        self.genes[innovation].inNode.outLinks.append(self.genes[innovation])
+        self.genes[innovation].outNode.inLinks.append(self.genes[innovation])
+        self.innovations.add(innovation)
+
+
+
     def addConnection(self, inNode, outNode, innovation, weight):
         """Adds a connection to the genome outside of the context of incrementing the global innovation variable"""
         self.genes[innovation] = gene(inNode, outNode, innovation, weight) # This should be sufficient to add a connection
         self.genes[innovation].inNode.outLinks.append(self.genes[innovation])
         self.genes[innovation].outNode.inLinks.append(self.genes[innovation])
-        print 'gene_dict', self.genes
         self.innovations.add(innovation)
         inNode.refresh()
         outNode.refresh()
@@ -315,7 +331,7 @@ class genome(object):
         """Adds a connecion between two previously unconnected nodes"""
         n1 = random.choice(self.nodes)
         n2 = random.choice(self.nodes)
-        if n1.ntype != n2.ntype or n1.ntype == "hid":
+        if n1.nType != "out" and n2.nType != "in":
             self.addConnection(n1, n2, parent.innovation, random.uniform(-1, 1))
             parent.innovation += 1
 
@@ -368,7 +384,7 @@ class genome(object):
             if node.nType != "out":
                 for gene in node.outLinks:
                     theta = gene.weight # aliasing our theta value
-                    self.nodes[gene.outNode].inValue += (self.nodes[gene.inNode].outValue * theta)
+                    gene.outNode.inValue += (gene.inNode.outValue * theta)
 
         # There may be a way to put this into our prior loop but right now I'd rather it explictly be seperate
         for node in self.nodes:
@@ -412,7 +428,7 @@ class inputNode(object):
         self.nType = "in"
         self.outLinks = []
         self.parent = parent
-        self.refresh()
+
 
     def refresh(self):
         self.outLinks = []
@@ -443,7 +459,6 @@ class hiddenNode(object):
         self.parent = parent
         self.inLinks = []
         self.outLinks = []
-        self.refresh()
 
     def refresh(self):
         self.inLinks = []
@@ -472,7 +487,7 @@ class outputNode(object):
         self.pos = None
         self.nType = "out"
         self.parent = parent
-        self.refresh()
+        self.inLinks = []
 
     def refresh(self):
         self.inLinks = []
@@ -564,9 +579,9 @@ def ai(board, opPos, yourPos, d1, d2, width, height):
         d2 = optimal
     elif (not oob(add(yourPos, optimal2), width, height)) and board[add(yourPos, optimal2)[0]][add(yourPos, optimal2)[1]] == 2:
         d2 = optimal2
-    elif (not oob(add(yourPos, (optimal2[0] * -1, optimal2[1] * -1)), width, height)) and board[add(yourPos, (optimal2[0] * -1, optimal2[1] * -1))[0]][add(yourPos, (optimal2[0] * -1, optimal2[1] * -1))[0]] == black:
+    elif (not oob(add(yourPos, (optimal2[0] * -1, optimal2[1] * -1)), width, height)) and board[add(yourPos, (optimal2[0] * -1, optimal2[1] * -1))[0]][add(yourPos, (optimal2[0] * -1, optimal2[1] * -1))[0]] == 2:
         d2 = optimal2[0] * -1, optimal2[1] * -1
-    elif (not oob(add(yourPos, (optimal[0] * -1, optimal[1] * -1)), width, height)) and board[add(yourPos, (optimal[0] * -1, optimal[1] * -1))[0]][add(yourPos, (optimal[0] * -1, optimal[1] * -1))[0]] == black:
+    elif (not oob(add(yourPos, (optimal[0] * -1, optimal[1] * -1)), width, height)) and board[add(yourPos, (optimal[0] * -1, optimal[1] * -1))[0]][add(yourPos, (optimal[0] * -1, optimal[1] * -1))[0]] == 2:
         d2 = optimal[0] * -1, optimal[1] * -1
 
     return d2
