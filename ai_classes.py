@@ -79,7 +79,9 @@ class neatNN(object):
         array = np.array(arrayMaker)
         array = (array / np.amax(array)) / 0.4 + 0.15
         for i, p in enumerate(array):
-            self.unsortedNextGen += self.breedingControl(self.species[i], p)
+            add = self.breedingControl(self.species[i], p)
+            if add != []:
+                self.unsortedNextGen += add
 
         for genome in self.unsortedNextGen:
             num = random.uniform(0, 100)
@@ -100,7 +102,7 @@ class neatNN(object):
 
         i = 0    #  Initialising I to the first index of our list
         while i < len(newGenomes):  # until I hs gon through all genomes
-            genome = newGenomes[i][0]  # newGenomes is the unsorted list of next generation of genomes
+            genome = newGenomes[i]  # newGenomes is the unsorted list of next generation of genomes
             genomeSpecies = genome.determineSpecies(self, self.speciesReps)
             if genomeSpecies != "NEW":
                 nextGeneration[genomeSpecies].append(genome)  # If it belongs to a species assign it to the proper sub_list
