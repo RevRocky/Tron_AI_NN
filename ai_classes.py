@@ -14,9 +14,9 @@ outputs = ["U", "D", "L", "R"]   # The four legal moves in tron
 C_DISJOINT = 1.0
 C_WEIGHT = 0.4
 INITIAL_GENOMES = 5
-MUTATE_INPUT_THRESH = 4/3  # 1/75 of random numbers between 0 and 100 ill fall in interval (0, 4/3)
-MUTATE_NODE_THRESH = MUTATE_INPUT_THRESH + 3  # Preserves probabilties
-MUTATE_CONN_THRESH = MUTATE_NODE_THRESH + 5
+MUTATE_INPUT_THRESH = 5  # 1/75 of random numbers between 0 and 100 ill fall in interval (0, 4/3)
+MUTATE_NODE_THRESH = MUTATE_INPUT_THRESH + 10  # Preserves probabilties
+MUTATE_CONN_THRESH = MUTATE_NODE_THRESH + 10
 
 
 class neatNN(object):
@@ -25,13 +25,16 @@ class neatNN(object):
 
     def __init__(self):
         self.innovation = 0
-        self.species    = []           # List of genomes.
         self.tron = Tron()             # Initialises a tron instance
         self.size = (160,160)
+        self.species = []
 
-    def start(self):
+    def start(self, fName = None):
         size = self.size
-        self.unsortedNextGen = [genome(self, [(size[0], size[1] - 1), (size[0] - 2, size[1] - 1), (size[0] - 1, size[1]), (size[0] - 1, size[1] - 2)], outputs, 2) for _ in xrange(INITIAL_GENOMES)]
+        if fName is None:
+          self.unsortedNextGen = [genome(self, [(size[0], size[1] - 1), (size[0] - 2, size[1] - 1), (size[0] - 1, size[1]), (size[0] - 1, size[1] - 2)], outputs, 2) for _ in xrange(INITIAL_GENOMES)]
+        else:
+          self.unsortedNextGen = readPickledFile(fName)
 
     def learningLoop(self):
         """This method controls the main learningLoop of our neural network
@@ -59,7 +62,7 @@ class neatNN(object):
                 count += 1
                 fitness, winning = self.evaluate(genome)
                 if winning:
-                    fitness += 400  # How much we increase fitness by.
+                    fitness += 20  # How much we increase fitness by.
                     genome.fitness = fitness
                 specFitTot +=  fitness
                 if fitness > maxFitness: 
@@ -87,7 +90,7 @@ class neatNN(object):
             elif num < MUTATE_CONN_THRESH:
                 genome.mutateAddConnection(self)
         
-        pickletoDisk(self.species, "EcoSystem")  # Saves the whole eco system.
+        pickletoDisk(self.unsortedNextGen, "EcoSystem")  # Saves the whole eco system.
         pickletoDisk(bestGenome, "strongestMember")
         return maxFitness, avgFitness
 
@@ -581,7 +584,7 @@ class Tron(object):
         self.board[self.p2[0]][self.p2[1]] = 1
         self.board[oldp2[0]][oldp2[1]] = -1
         
-        self.clock.tick(30)
+        self.clock.tick(320)
 
         pygame.transform.scale(self.s, (self.size[0] * 4, self.size[1] * 4), self.d)
         pygame.display.flip()
@@ -636,13 +639,13 @@ def ai(board, opPos, yourPos, d1, d2, width, height):
 # In[266]:
 
 def main():
-    MAX_GENERATIONS = 3
+    MAX_GENERATIONS = 1600
     
     clear_file()
 
     
     trainingNets = neatNN()
-    trainingNets.start()
+    trainingNets.start("./EcoSystem")
     for generation in xrange(MAX_GENERATIONS):
         startTime = time.time()
         print "Generation", generation, "begin"
