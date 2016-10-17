@@ -528,6 +528,7 @@ class Tron(object):
         self.clock = pygame.time.Clock()
     
     def quit(self):
+        pygame.display.quit()
         pygame.quit()
 
     def add(self, a, b):
