@@ -647,7 +647,7 @@ def main():
 
     
     trainingNets = neatNN()
-    trainingNets.start("./EcoSystem")
+    trainingNets.start()
     for generation in xrange(MAX_GENERATIONS):
         startTime = time.time()
         print "Generation", generation, "begin"
