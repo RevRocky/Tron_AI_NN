@@ -65,7 +65,8 @@ class neatNN(object):
                     fitness += 20  # How much we increase fitness by.
                     genome.fitness = fitness
                 specFitTot +=  fitness
-                if fitness > maxFitness: 
+                if fitness > maxFitness:
+                    maxFitness = fitness
                     bestGenome = genome
             avgFitness += specFitTot
             if len(species) > 0:
