@@ -100,7 +100,7 @@ class neatNN(object):
 
         i = 0    #  Initialising I to the first index of our list
         while i < len(newGenomes):  # until I hs gon through all genomes
-            genome = newGenomes[i]  # newGenomes is the unsorted list of next generation of genomes
+            genome = newGenomes[i][0]  # newGenomes is the unsorted list of next generation of genomes
             genomeSpecies = genome.determineSpecies(self, self.speciesReps)
             if genomeSpecies != "NEW":
                 nextGeneration[genomeSpecies].append(genome)  # If it belongs to a species assign it to the proper sub_list
