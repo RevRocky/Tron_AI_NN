@@ -1,30 +1,21 @@
-
-# coding: utf-8
-
-# In[ ]:
-
 import pickle
-import csv
 
-# In[8]:
+def record(generationNumber, timeSpentTraining, averageFitness, maxFitness, fName):
+  s = ""
+  for d in [generationNumber, timeSpentTraining, averageFitness, maxFitness]:
+    s += str(d) + ","
+  with open(fName, 'a') as file:
+    file.write(s[:-2] + "\n")
 
-def record(generationNumber, timeSpentTraining, averageFitness, maxFitness):
-    with open('record.csv', 'ab') as file:
-        csvWriteHead = csv.writer(file, delimiter = ' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        csvWriteHead.writerow([generationNumber, timeSpentTraining, averageFitness, maxFitness])
-        
-def clear_file():
-    with open('record.csv', 'wb') as file:
-        csvWriteHead = csv.writer(file, delimiter = ' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        csvWriteHead.writerow('')
-    
-# In[ ]:
+def clear_file(fName, fName2):
+  with open(fName + ".pkl", 'w') as file:
+    file.write("")
+  with open(fName2, 'w') as file:
+    file.write("")
 
-def pickletoDisk(population, mfile = "./Backups/Population"):
-    """This function pickles the entire population object heiarchy to disk"""
-    with open(mfile, 'wb') as inFile:
-        pickle.dump(population, inFile)
+def pickleToDisk(population, fName):
+  """This function pickles the entire population object hierarchy to disk"""
+  pickle.dump(population, open(fName + ".pkl", 'wb'), protocol=2)
 
-def readPickledFile(mfile = "./Backups/Population"):
-    with open(mfile, 'rb') as inFile:
-        return pickle.load(inFile)  # This should return an original object heiarchy that would be assigned to NN_Neat.species
+def readPickledFile(fName):
+  return pickle.load(open(fName + ".pkl", 'rb'))
