@@ -34,7 +34,7 @@ def plot_maxFitness(gen_num, max_fitness):
     plt.show()
 
 def main_plot():
-    df = pd.read_csv('record.csv', header=None)
+    df = pd.read_csv('stats.txt', header=None)
     raw_data = df[0].values #use this method to parse data since the csv file has empty header
     print raw_data
     raw_data = [i.split(' ') for i in raw_data]
