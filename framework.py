@@ -4,16 +4,20 @@ import numpy as np
 from neatNN import neatNN
 import saveToFile
 
-SIZE = 160,160
-HUMAN = False
-PYGAME = True
 MAX_GEN = -1 #-1 is unlimited
+SIZE = 160,160
+FPS = 0 #Below 1 is unlimited
+HUMAN = False
+PYGAME = False
+ADV_DBG = True
 LOAD_FROM_FILE = False
 SAVE_TO_FILE = True
+PLAY = False
 LOAD_FILE_NAME = "save"
 SAVE_FILE_NAME = "save"
 BEST_FILE_NAME = "best"
-STAT_FILE_NAME = "stats.txt"
+PLAY_FILE_NAME = "best"
+STAT_FILE_NAME = "stats"
 
 if PYGAME:
   import pygame
@@ -26,6 +30,7 @@ class Tron(object):
       self.d = pygame.display.set_mode((self.size[0] * 4,self.size[1]*4))
       self.s = pygame.Surface(self.size)
     self.quitFlag = False
+    self.toErase = []
 
   def start(self):
     self.board = np.empty(self.size)
@@ -53,7 +58,11 @@ class Tron(object):
       return True
     return False
 
-  def tick(self, move):
+  def tick(self, move, genome):
+    for d in self.toErase:
+      self.s.set_at(d[0], d[1])
+    self.toErase = []
+
     self.oldd1 = self.d1
     if move == "U":
       self.d1 = (0, -1)
@@ -105,9 +114,20 @@ class Tron(object):
     self.board[self.p2[0]][self.p2[1]] = 1
     self.board[oldp2[0]][oldp2[1]] = -1
 
+    if PYGAME and ADV_DBG:
+      for n in genome.nodes:
+        if n.nType == "in":
+          p = n.pos[0] - (self.size[0] - 1) + self.p1[0], n.pos[1] - (self.size[1] - 1) + self.p1[1]
+          if not self.oob(p, self.size[0], self.size[1]):
+            self.toErase.append((p, self.s.get_at(p)))
+            self.s.set_at(p, (0, 255, 0))
+
     if PYGAME:
       pygame.transform.scale(self.s, (self.size[0] * 4, self.size[1] * 4), self.d)
       pygame.display.flip()
+
+    if FPS > 0:
+      time.sleep(1 / FPS)
 
     return self.p1, (0,0)
 
@@ -183,4 +203,16 @@ def main():
 
   framework.quit()
 
-main()
+def play():
+  global ADV_DBG
+  framework = Tron(SIZE)
+  trainingNets = neatNN(framework)
+  PYGAME = True
+  FPS = 30
+  ADV_DBG = False
+  trainingNets.evaluate(saveToFile.readPickledFile(PLAY_FILE_NAME))
+
+if not PLAY:
+  main()
+else:
+  play()

@@ -4,7 +4,7 @@ def record(generationNumber, timeSpentTraining, averageFitness, maxFitness, fNam
   s = ""
   for d in [generationNumber, timeSpentTraining, averageFitness, maxFitness]:
     s += str(d) + ","
-  with open(fName, 'a') as file:
+  with open(fName + ".txt", 'a') as file:
     file.write(s[:-2] + "\n")
 
 def clear_file(fName, fName2):

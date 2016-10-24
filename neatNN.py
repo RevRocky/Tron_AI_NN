@@ -154,7 +154,7 @@ class neatNN(object):
       processedBoard = self.processBoard(tron.board, headPos)
       genomeMove = g.getMove(processedBoard)
       fitness = fitness + 1
-      headPos, winner = tron.tick(genomeMove) #give the framework a move, and get the result.
+      headPos, winner = tron.tick(genomeMove, g) #give the framework a move, and get the result.
       if 1 in winner:
         gameWinner = True
     # If the first cell in our tuple is 1 the NN has won
@@ -261,6 +261,7 @@ class genome(object):
     self.innovations = set()
     self.fitness = 0
     self.maxNodeNumber = -1
+    self.parent = parent
 
     for i, _ in enumerate(initialInputs):
       self.addNode(inputNode(self.maxNodeNumber + 1, self, initialInputs[i]))
@@ -308,7 +309,6 @@ class genome(object):
     self.addConnection(newNode, g.outNode, parent.innovation, g.weight)
     parent.innovation += 1
 
-
   def mutateAddConnection(self, parent):
     """Adds a connecion between two previously unconnected nodes"""
     n1 = random.choice(self.nodes)
@@ -319,11 +319,11 @@ class genome(object):
 
   def mutateAddInput(self, parent):
     """Add an input node"""
-    x = random.randint(-1, parent.size[0])  # -1 represents a bias unit
+    x = random.randint(-1, parent.size[0] * 2 - 1)  # -1 represents a bias unit
     if x == -1:  #if we have a bias unit
       y = -1
     else: #Regular input
-      y = random.randint(0, parent.size[1])
+      y = random.randint(0, parent.size[1] * 2 - 1)
     out = random.choice(self.nodes)
     self.addNode(inputNode(self.maxNodeNumber + 1, parent, (x,y)))
     self.maxNodeNumber += 1
@@ -399,14 +399,13 @@ class gene(object):
 class inputNode(object):
   def __init__(self, index, parent, pos, value = 0):
     self.index = index
-    self.pos = pos # relative to top-left corner, (-1, -1) signifies a bias node
+    self.pos = pos # relative to top-left corner of processed board, (-1, -1) signifies a bias node
     self.inValue = 0
     self.button = None
     self.outValue = value # This is just to make code play nicely with each other
     self.nType = "in"
     self.outLinks = []
     self.parent = parent
-
 
   def refresh(self):
     self.outLinks = []
