@@ -6,9 +6,9 @@ import saveToFile
 
 MAX_GEN = -1 #-1 is unlimited
 SIZE = 160,160
-FPS = 0 #Below 1 is unlimited
+FPS = 100 #Below 1 is unlimited
 HUMAN = False
-PYGAME = False
+PYGAME = True
 ADV_DBG = True
 LOAD_FROM_FILE = False
 SAVE_TO_FILE = True
@@ -126,8 +126,8 @@ class Tron(object):
       pygame.transform.scale(self.s, (self.size[0] * 4, self.size[1] * 4), self.d)
       pygame.display.flip()
 
-    if FPS > 0:
-      time.sleep(1 / FPS)
+    if PYGAME and FPS > 0:
+      time.sleep(1.0 / float(FPS))
 
     return self.p1, (0,0)
 
@@ -205,6 +205,8 @@ def main():
 
 def play():
   global ADV_DBG
+  global PYGAME
+  global FPS
   framework = Tron(SIZE)
   trainingNets = neatNN(framework)
   PYGAME = True

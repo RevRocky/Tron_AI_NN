@@ -12,9 +12,10 @@ DISJOINT = 1.0 # Constants for species assignment
 
 WEIGHT = 0.4
 INITIAL_GENOMES = 5
-MUTATE_INPUT_THRESH = 5  # Constants for mutations out of 100
-MUTATE_NODE_THRESH = MUTATE_INPUT_THRESH + 10
-MUTATE_CONN_THRESH = MUTATE_NODE_THRESH + 10
+MUTATE_INPUT_THRESH = 5  # Constants for mutation chance out of 100
+MUTATE_NODE_THRESH = MUTATE_INPUT_THRESH + 5
+MUTATE_CONN_THRESH = MUTATE_NODE_THRESH + 5
+EVAL_LOOP_MAX = 5
 
 class neatNN(object):
   """ This class will aim to implement the NEAT algorithm to creating neural networks that can
@@ -93,7 +94,7 @@ class neatNN(object):
     for g in self.unsortedNextGen:
       num = random.uniform(0, 100)
       if num < MUTATE_INPUT_THRESH:
-        g.mutateAddNode(self)
+        g.mutateAddInput(self)
       elif num < MUTATE_NODE_THRESH:
         g.mutateAddNode(self)
       elif num < MUTATE_CONN_THRESH:
@@ -152,7 +153,8 @@ class neatNN(object):
     fitness = 0
     while not gameWinner:
       processedBoard = self.processBoard(tron.board, headPos)
-      genomeMove = g.getMove(processedBoard)
+      for _ in range(EVAL_LOOP_MAX):
+        genomeMove = g.getMove(processedBoard)
       fitness = fitness + 1
       headPos, winner = tron.tick(genomeMove, g) #give the framework a move, and get the result.
       if 1 in winner:
@@ -275,7 +277,7 @@ class genome(object):
       inNode = self.nodes[random.randint(0, len(initialInputs) - 1)]
       nodeNum = random.randint(len(initialInputs), len(initialInputs) + len(initialOutputs) - 2)
       outNode = self.nodes[nodeNum]
-      self.addConnection(inNode,outNode, parent.innovation, random.uniform(-1, 1) )
+      self.addConnection(inNode, outNode, parent.innovation, random.uniform(-1, 1))
       parent.innovation += 1
 
   def sigmoid(self, x):
@@ -325,9 +327,15 @@ class genome(object):
     else: #Regular input
       y = random.randint(0, parent.size[1] * 2 - 1)
     out = random.choice(self.nodes)
-    self.addNode(inputNode(self.maxNodeNumber + 1, parent, (x,y)))
+    count = 0
+    while out.nType == "in" or count > 10:
+      out = random.choice(self.nodes)
+      count += 1
+    if count > 10:
+      return None
+    node1 = self.addNode(inputNode(self.maxNodeNumber + 1, self, (x,y)))
     self.maxNodeNumber += 1
-    self.addConnection(self.maxNodeNumber, out, parent.innovation, random.uniform(-1, 1))
+    self.addConnection(node1, out, parent.innovation, random.uniform(-1, 1))
     parent.innovation += 1
 
   def setEnable(self, connection, value):
@@ -352,7 +360,7 @@ class genome(object):
     self.fitness += 400  # Increments fitness by what_ever fitness value we deem appropriate
 
   def getMove(self, processedBoard):
-    """Feedforward one tick at a time of our neural network. Needs to save data between ticks."""
+    """Feed forward one tick at a time of our neural network. Needs to save data between ticks."""
     # Creating lists of my input and output nodes. This should probably be done elsewhere
     outputNodes = []
     for node in self.nodes:
@@ -389,7 +397,7 @@ class gene(object):
   """Stores information regarding connexions between nodes."""
 
   def __init__(self, inNode, outNode, innovation, weight, enabled = True):
-    # Wow look at these fancy initialisations.
+    # Wow look at these fancy initializations.
     self.inNode = inNode
     self.outNode = outNode
     self.innovation = innovation
